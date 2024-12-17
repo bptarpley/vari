@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Variorum Viewer</title>
+    <link href="/css/vari.css" rel="stylesheet">
+</head>
+<body>
+    <div id="control-div">
+        <div>
+            Select an edition as your copy text:
+            <select id="copytext-box"></select>
+        </div>
+        <details id="edition-list">
+            <summary>Editions shown</summary>
+        </details>
+    </div>
+
+    <div id="vari-table-holder">
+        <table id="vari-table">
+            <thead>
+                <tr id="vari-header">
+                    <th id="hdr-histogram"></th>
+                    <th id="hdr-copytext" class="edition-header"></th>
+                </tr>
+            </thead>
+            <tbody id="vari-body"></tbody>
+        </table>
+    </div>
+
+    <script src="js/utilities.js"></script>
+    <script src="js/diff.js"></script>
+    <script type="application/javascript">
+        window.vari = {
+            corporaHost: 'https://corpora.dh.tamu.edu',
+            corpusID: '65ea1677203f31a0867f4e13',
+            workID: '65ea179c8147b0628b3e897f',
+            atomContentType: 'Line',
+            ordered_editions: [],
+            ordered_tlns: new Set(),
+            editions: {},
+            copytexts: {},
+            atoms: {},
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            populateData(() => {
+                let copytextBox = getEl('copytext-box')
+                let editionList = getEl('edition-list')
+                let variHeader = getEl('vari-header')
+
+                window.vari.ordered_editions.forEach(editionID => {
+                    let ed = window.vari.editions[editionID]
+
+                    if (editionID in window.vari.copytexts) {
+                        appendToEl(copytextBox, `
+                            <option value="${editionID}">${ed.siglum}</option>
+                        `)
+                    }
+
+                    appendToEl(editionList, `
+                        <div>
+                            <input type="checkbox" id="edition-listing-${editionID}" class="edition-list-item" data-edition="${editionID}" checked>
+                            ${ed.siglum}
+                        </div>
+                    `)
+                    let headerRow = makeEl('th', {
+                        id: `hdr-${editionID}`,
+                        class: 'edition-header',
+                        'data-edition': editionID
+                    })
+                    headerRow.innerHTML = makeEditionLink(ed)
+                    variHeader.appendChild(headerRow)
+                })
+
+                copytextBox.onchange = (e) => {
+                    let copytextID = getEl('copytext-box').value
+                    window.vari.ordered_editions.forEach(editionID => {
+                        window.vari.editions[editionID].visible = window.vari.copytexts[copytextID].includes(editionID)
+                        getEl(`edition-listing-${editionID}`).checked = window.vari.editions[editionID].visible
+                    })
+                    getEl('hdr-copytext').innerHTML = makeEditionLink(window.vari.editions[copytextID])
+                    drawVari()
+                }
+                forElsMatching('.edition-list-item', el => el.onchange = (e) => {
+                    window.vari.editions[e.target.dataset.edition].visible = e.target.checked
+                    drawVari()
+                })
+
+                copytextBox.dispatchEvent(new Event('change'))
+            })
+        })
+
+        function drawVari() {
+            let variBody = getEl('vari-body')
+            let copytextID = getEl('copytext-box').value
+            let copytext = window.vari.editions[copytextID]
+            let tlnsDrawn = new Set()
+
+            copytext.visible = false
+            clearEl(variBody)
+            copytext.ordered_tlns.forEach(tln => {
+                let diffSlots = Array.from(window.vari.ordered_editions, (_,i) => false)
+                let tlnKey = `${copytextID}-${tln}`
+                let atom = window.vari.atoms[tlnKey]
+                let atomRow = makeEl('tr', {
+                    id: `${tln}-row`,
+                    class: `atom-row${atom.new_stanza ? ' new-stanza' : ''}`,
+                    'data-tln': tln
+                })
+
+                window.vari.ordered_editions.forEach((editionID, edSlot) => {
+                    let headerCol = getEl(`hdr-${editionID}`)
+                    let edCol = makeEl('td', {
+                        id: `${tln}-${editionID}-col`,
+                        class: 'atom-col',
+                        'data-tln': tln,
+                        'data-edition': editionID
+                    })
+
+
+                    if (window.vari.editions[editionID].visible) {
+                        headerCol.classList.remove('hidden')
+                        let tlnKey = `${editionID}-${tln}`
+                        if (tlnKey in window.vari.atoms) {
+                            let edAtom = window.vari.atoms[tlnKey]
+                            let [diff, isVariant] = makeDiff(atom.text, edAtom.text)
+                            edCol.appendChild(makeLineLink(edAtom, diff, atom.ln))
+                            diffSlots[edSlot] = isVariant
+                        } else {
+                            edCol.setAttribute('class', 'atom-col missing')
+                            edCol.innerHTML = '&nbsp;'
+                            diffSlots[edSlot] = true
+                        }
+                    } else {
+                        edCol.classList.add('hidden')
+                        headerCol.classList.add('hidden')
+                    }
+
+                    atomRow.appendChild(edCol)
+                })
+
+                atomCol = makeEl('td', {
+                    id: `${tln}-${copytextID}-col`,
+                    class: `atom-col copytext`,
+                    'data-tln': tln,
+                    'data-edition': copytextID
+                })
+                atomCol.appendChild(makeLineLink(atom))
+                atomRow.prepend(atomCol)
+
+                histoCol = makeEl('td', {
+                    id: `${tln}-histogram-col`,
+                    class: `histogram-col`,
+                    'data-tln': tln
+                })
+                histoCol.innerHTML = makeHistogram(diffSlots)
+                atomRow.prepend(histoCol)
+
+                variBody.appendChild(atomRow)
+                tlnsDrawn.add(tln)
+            })
+        }
+
+
+    </script>
+</body>
+</html>

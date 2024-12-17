@@ -1,0 +1,106 @@
+body {
+    background-color: #303230;
+    color: #C29C49;
+}
+
+#control-div {
+    display: flex;
+    flex-direction: row;
+    margin: 10px 0 10px 0;
+    justify-content: space-between;
+}
+
+.edition-header a {
+    font-weight: bold;
+    text-decoration: none;
+    color: #362E1A;
+}
+
+.atom-col a {
+    text-decoration: none;
+    color: #362E1A;
+}
+
+.ln-holder {
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.ln-holder.variant {
+    background-color: #8a008b;
+    color: white;
+}
+
+.hidden {
+    display: none!important;
+}
+
+.histogram {
+    border: none;
+}
+.diff-indicator {
+    height: 20px;
+    width: 3px;
+}
+.diff-indicator.variant {
+    background-color: black;
+}
+
+del {
+    text-decoration: none;
+    color: #b30000;
+    background: #fadad7;
+}
+ins {
+    background: #eaf2c2;
+    color: #406619;
+    text-decoration: none;
+}
+.chunk-header {
+    color: #8a008b;
+    text-decoration: none;
+}
+
+#control-div, #vari-table-holder {
+    max-width: 90vw;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#vari-table-holder {
+    overflow-x: auto;
+    overflow-y: scroll;
+    height: 90vh;
+}
+
+#vari-table, #vari-table-holder {
+    background-color: #C29C49;
+}
+
+#vari-table {
+    position: relative;
+}
+
+#vari-table th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #C29C49;
+    border-bottom: solid 1px #AF582F;
+}
+
+#vari-table td, #vari-table th {
+    color: #362E1A;
+}
+
+.atom-row.new-stanza td {
+    padding-top: 20px;
+}
+
+.atom-col {
+    text-wrap-mode: nowrap;
+}
+
+.atom-col {
+    vertical-align: bottom;
+}
