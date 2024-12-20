@@ -10,6 +10,41 @@ body {
     justify-content: space-between;
 }
 
+#edition-list-holder {
+    position: relative;
+    min-width: 300px;
+    display: flex;
+    align-items: end;
+}
+
+#edition-list summary {
+    cursor: pointer;
+}
+
+#edition-list {
+    position: absolute;
+    top: 0;
+    z-index: 50;
+    background-color: #303230;
+    min-width: 300px;
+    text-align: right;
+}
+
+#edition-list[open] {
+    padding-left: 10px;
+    padding-bottom: 10px;
+}
+
+.edition-list-col {
+    vertical-align: top;
+    text-align: left;
+    min-width: 150px;
+}
+
+.edition-list-item.derivative {
+    margin-left: 15px;
+}
+
 .edition-header a {
     font-weight: bold;
     text-decoration: none;
@@ -50,6 +85,7 @@ del {
     text-decoration: none;
     color: #b30000;
     background: #fadad7;
+    text-decoration: line-through;
 }
 ins {
     background: #eaf2c2;
@@ -71,6 +107,7 @@ ins {
     overflow-x: auto;
     overflow-y: scroll;
     height: 90vh;
+    padding-bottom: 20px;
 }
 
 #vari-table, #vari-table-holder {
@@ -95,6 +132,10 @@ ins {
 
 .atom-row.new-stanza td {
     padding-top: 20px;
+}
+
+.atom-row.missing {
+    background-color: #AF582F;
 }
 
 .atom-col {

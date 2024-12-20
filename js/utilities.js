@@ -46,9 +46,10 @@ function populateData(callback) {
             })
 
             editions.records.forEach(edition => {
-                let rootID = determineRootInfluence(edition.id)
-                if (rootID !== null && (rootID in window.vari.copytexts)) window.vari.copytexts[rootID].push(edition.id)
-                else console.log(edition)
+                if (!(edition.id in window.vari.copytexts)) {
+                    let rootID = determineRootInfluence(edition.id)
+                    if (rootID !== null && (rootID in window.vari.copytexts)) window.vari.copytexts[rootID].push(edition.id)
+                }
             })
         }
 
@@ -99,6 +100,15 @@ function hasProp(obj, path) {
         return true
     })
 }
+function parseDateString(timestamp, granularity='Day', adjustForTimezone=true) {
+    let date = new Date(timestamp)
+    if (granularity === 'Day')
+        return date.toISOString().split('T')[0]
+    else if (granularity === 'Year')
+        return date.toLocaleString('default', { year: 'numeric' })
+    else if (granularity === 'Month')
+        return date.toLocaleString('default', { month: 'long', year: 'numeric' })
+}
 
 // variorum presentation
 function makeDiff(a, b) {
@@ -147,7 +157,8 @@ function makeHistogram(slots) {
     `
 }
 function makeEditionLink(ed) {
-    return `<a href="${window.vari.corporaHost}${ed.uri}" target="_blank">${ed.siglum}</a>`
+    let pubDate = parseDateString(ed.published, 'Year')
+    return `<a href="${window.vari.corporaHost}${ed.uri}" target="_blank">${ed.siglum} ${pubDate}</a>`
 }
 function makeLineLink(line, diffElement=null, original_ln=null) {
     let lineLink = makeEl('a', {
