@@ -113,7 +113,7 @@ function parseDateString(timestamp, granularity='Day', adjustForTimezone=true) {
 // variorum presentation
 function makeDiff(a, b) {
     let fragment = document.createDocumentFragment()
-    let diff = Diff.diffWords(a, b)
+    let diff = Diff.diffWords(stripHTML(a), stripHTML(b))
     let isVariant = false
 
     for (let i=0; i < diff.length; i++) {
@@ -145,6 +145,16 @@ function makeDiff(a, b) {
     }
 
     return [fragment, isVariant]
+}
+function stripHTML(htmlString) {
+    // Create a temporary DOM element
+    const tempElement = document.createElement('div');
+
+    // Set the HTML content of the temporary element
+    tempElement.innerHTML = htmlString;
+
+    // Return only the text content, which excludes HTML tags
+    return tempElement.textContent || tempElement.innerText || '';
 }
 function makeHistogram(slots) {
     let indicators = slots.map(isVariant => `<td class="diff-indicator${isVariant ? ' variant' : ''}">&nbsp;</td>`)
