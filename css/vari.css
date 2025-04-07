@@ -96,6 +96,15 @@ ins {
     color: #8a008b;
     text-decoration: none;
 }
+.style-change.removed {
+    border-bottom: solid 2px #b30000;
+}
+.style-change.added {
+    border-bottom: solid 2px #406619;
+}
+.style-change-i, .style-change-em {
+    font-style: italic;
+}
 
 #control-div, #vari-table-holder {
     max-width: 90vw;

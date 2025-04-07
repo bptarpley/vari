@@ -113,48 +113,115 @@ function parseDateString(timestamp, granularity='Day', adjustForTimezone=true) {
 // variorum presentation
 function makeDiff(a, b) {
     let fragment = document.createDocumentFragment()
-    let diff = Diff.diffWords(stripHTML(a), stripHTML(b))
+    let diff = Diff.diffWords(distillHTML(a), distillHTML(b))
     let isVariant = false
+    let styleNode = null
 
     for (let i=0; i < diff.length; i++) {
 
         if (diff[i].added && diff[i + 1] && diff[i + 1].removed) {
-            let swap = diff[i];
-            diff[i] = diff[i + 1];
-            diff[i + 1] = swap;
+            let swap = diff[i]
+            diff[i] = diff[i + 1]
+            diff[i + 1] = swap
         }
 
+        let tagsAndText = getTagsAndText(diff[i].value)
         let node = null
-        if (diff[i].removed) {
-            node = document.createElement('del')
-            node.appendChild(document.createTextNode(diff[i].value))
-            isVariant = true
-        } else if (diff[i].added) {
-            node = document.createElement('ins')
-            node.appendChild(document.createTextNode(diff[i].value))
-            isVariant = true
-        } else if (diff[i].chunkHeader) {
-            node = document.createElement('span')
-            node.setAttribute('class', 'chunk-header')
-            node.appendChild(document.createTextNode(diff[i].value))
-            isVariant = true
-        } else {
-            node = document.createTextNode(diff[i].value)
+
+        if (tagsAndText.opened_tags.length && (diff[i].added || diff[i].removed)) {
+            styleNode = document.createElement('span')
+            styleNode.classList.add('style-change')
+            if (diff[i].added){
+                styleNode.classList.add('added')
+                tagsAndText.opened_tags.forEach(tag => styleNode.classList.add(`style-change-${tag}`))
+            }
+            else if (diff[i].removed) styleNode.classList.add('removed')
         }
-        fragment.appendChild(node)
+
+        if (tagsAndText.text.trim().length) {
+            if (diff[i].removed) {
+                node = document.createElement('del')
+                node.appendChild(document.createTextNode(tagsAndText.text))
+                isVariant = true
+            } else if (diff[i].added) {
+                node = document.createElement('ins')
+                node.appendChild(document.createTextNode(tagsAndText.text))
+                isVariant = true
+            } else if (diff[i].chunkHeader) {
+                node = document.createElement('span')
+                node.setAttribute('class', 'chunk-header')
+                node.appendChild(document.createTextNode(tagsAndText.text))
+                isVariant = true
+            } else {
+                node = document.createElement('template')
+                node.innerHTML = diff[i].value
+                node = node.content
+            }
+        }
+
+        if (node !== null) {
+            if (styleNode !== null) styleNode.appendChild(node)
+            else fragment.appendChild(node)
+        }
+
+        if (tagsAndText.closed_tags.length && (diff[i].added || diff[i].removed)) {
+            fragment.appendChild(styleNode)
+            styleNode = null
+        }
     }
 
     return [fragment, isVariant]
 }
-function stripHTML(htmlString) {
-    // Create a temporary DOM element
-    const tempElement = document.createElement('div');
+function distillHTML(htmlString) {
+    let stylisticTags = ['em']
+    let tagTransforms = {
+        'i': 'em'
+    }
 
-    // Set the HTML content of the temporary element
-    tempElement.innerHTML = htmlString;
+    Object.keys(tagTransforms).forEach(tag => {
+        htmlString = htmlString.replaceAll(`<${tag}>`, `<${tagTransforms[tag]}>`)
+        htmlString = htmlString.replaceAll(`</${tag}>`, `</${tagTransforms[tag]}>`)
+    })
 
-    // Return only the text content, which excludes HTML tags
-    return tempElement.textContent || tempElement.innerText || '';
+    let tagsAndText = getTagsAndText(htmlString)
+
+    tagsAndText.opened_tags.forEach(tag => {
+        if (stylisticTags.includes(tag)) htmlString = htmlString.replaceAll(`<${tag}>`, ` <${tag}> `)
+        else htmlString = htmlString.replaceAll(`<${tag}>`, '')
+    })
+    tagsAndText.closed_tags.forEach(tag => {
+        if (stylisticTags.includes(tag)) htmlString = htmlString.replaceAll(`</${tag}>`, ` </${tag}> `)
+        else htmlString = htmlString.replaceAll(`</${tag}>`, '')
+    })
+
+    htmlString = htmlString.split(' ').filter(part => part.length).join(' ')
+
+    return htmlString
+}
+function getTagsAndText(input) {
+    // Return empty result for empty or non-string input
+    if (!input || typeof input !== 'string') {
+        return { opened_tags: [], closed_tags: [], text: '' }
+    }
+
+    // Find all opening HTML tags in the string
+    const openTagRegex = /<\s*([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g
+    const openTagMatches = [...input.matchAll(openTagRegex)]
+    const openedTags = openTagMatches.map(match => match[1])
+
+    // Find all closing HTML tags in the string
+    const closeTagRegex = /<\s*\/\s*([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g
+    const closeTagMatches = [...input.matchAll(closeTagRegex)]
+    const closedTags = closeTagMatches.map(match => match[1])
+
+    // Extract text content by removing HTML tags
+    const text = input.replace(/<\/?[^>]+(>|$)/g, '')
+
+    return {
+        opened_tags: openedTags, // Remove duplicates
+        closed_tags: closedTags, // Remove duplicates
+        text: text
+    }
 }
 function makeHistogram(slots) {
     let indicators = slots.map(isVariant => `<td class="diff-indicator${isVariant ? ' variant' : ''}">&nbsp;</td>`)

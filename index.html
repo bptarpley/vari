@@ -156,14 +156,7 @@
                         let tlnKey = `${editionID}-${tln}`
                         if (tlnKey in window.vari.atoms) {
                             let edAtom = window.vari.atoms[tlnKey]
-
-                            let atomText = atom.text
-                            if (edAtom.text === atomText && stripHTML(edAtom.content) !== stripHTML(atom.content)) {
-                                atomText = atom.content
-                            }
-                            
-                            //let [diff, isVariant] = makeDiff(atom.content, edAtom.content)
-                            let [diff, isVariant] = makeDiff(atomText, edAtom.text)
+                            let [diff, isVariant] = makeDiff(atom.content, edAtom.content)
 
                             edCol.appendChild(makeLineLink(edAtom, diff, atom.ln))
                             diffSlots[edSlot] = isVariant
