@@ -115,7 +115,7 @@ function makeDiff(a, b) {
     let fragment = document.createDocumentFragment()
     let diff = Diff.diffWords(distillHTML(a), distillHTML(b))
     let isVariant = false
-    let styleNode = null
+    let styleNodes = []
 
     for (let i=0; i < diff.length; i++) {
 
@@ -128,45 +128,57 @@ function makeDiff(a, b) {
         let tagsAndText = getTagsAndText(diff[i].value)
         let node = null
 
-        if (tagsAndText.opened_tags.length && (diff[i].added || diff[i].removed)) {
-            styleNode = document.createElement('span')
-            styleNode.classList.add('style-change')
-            if (diff[i].added){
-                styleNode.classList.add('added')
-                tagsAndText.opened_tags.forEach(tag => styleNode.classList.add(`style-change-${tag}`))
-            }
-            else if (diff[i].removed) styleNode.classList.add('removed')
-        }
+        if (tagsAndText.opened_tags.length === tagsAndText.closed_tags.length && !(diff[i].added || diff[i].removed)) {
+            node = document.createElement('template')
+            node.innerHTML = diff[i].value
+            node = node.content
+        } else {
+            if (tagsAndText.opened_tags.length && (diff[i].added || diff[i].removed)) {
+                tagsAndText.opened_tags.forEach(tag => {
+                    let styleNode = document.createElement('span')
+                    styleNode.classList.add('style-change')
 
-        if (tagsAndText.text.trim().length) {
-            if (diff[i].removed) {
-                node = document.createElement('del')
-                node.appendChild(document.createTextNode(tagsAndText.text))
-                isVariant = true
-            } else if (diff[i].added) {
-                node = document.createElement('ins')
-                node.appendChild(document.createTextNode(tagsAndText.text))
-                isVariant = true
-            } else if (diff[i].chunkHeader) {
-                node = document.createElement('span')
-                node.setAttribute('class', 'chunk-header')
-                node.appendChild(document.createTextNode(tagsAndText.text))
-                isVariant = true
-            } else {
-                node = document.createElement('template')
-                node.innerHTML = diff[i].value
-                node = node.content
+                    if (diff[i].added) {
+                        styleNode.classList.add('added')
+                        styleNode.classList.add(`style-change-${tag}`)
+                    }
+                    else styleNode.classList.add('removed')
+
+                    styleNodes.push(styleNode)
+                })
+
+                tagsAndText.opened_tags = []
+            }
+
+            if (tagsAndText.text.trim().length) {
+                if (diff[i].removed) {
+                    node = document.createElement('del')
+                    node.appendChild(document.createTextNode(tagsAndText.text))
+                    isVariant = true
+                } else if (diff[i].added) {
+                    node = document.createElement('ins')
+                    node.appendChild(document.createTextNode(tagsAndText.text))
+                    isVariant = true
+                } else {
+                    node = document.createTextNode(tagsAndText.text)
+                }
+            } else if (tagsAndText.opened_tags.length) {
+                tagsAndText.opened_tags.forEach(tag => {
+                    styleNodes.push(document.createElement(tag))
+                })
             }
         }
 
         if (node !== null) {
-            if (styleNode !== null) styleNode.appendChild(node)
+            if (styleNodes.length) styleNodes[styleNodes.length - 1].appendChild(node)
             else fragment.appendChild(node)
         }
 
-        if (tagsAndText.closed_tags.length && (diff[i].added || diff[i].removed)) {
-            fragment.appendChild(styleNode)
-            styleNode = null
+        if (tagsAndText.closed_tags.length > tagsAndText.opened_tags.length && styleNodes.length) {
+            if (styleNodes.length > 1) styleNodes[styleNodes.length - 2].appendChild(styleNodes[styleNodes.length - 1])
+            else fragment.appendChild(styleNodes[0])
+
+            styleNodes.pop()
         }
     }
 
@@ -186,15 +198,11 @@ function distillHTML(htmlString) {
     let tagsAndText = getTagsAndText(htmlString)
 
     tagsAndText.opened_tags.forEach(tag => {
-        if (stylisticTags.includes(tag)) htmlString = htmlString.replaceAll(`<${tag}>`, ` <${tag}> `)
-        else htmlString = htmlString.replaceAll(`<${tag}>`, '')
+        if (!stylisticTags.includes(tag)) htmlString = htmlString.replaceAll(`<${tag}>`, '')
     })
     tagsAndText.closed_tags.forEach(tag => {
-        if (stylisticTags.includes(tag)) htmlString = htmlString.replaceAll(`</${tag}>`, ` </${tag}> `)
-        else htmlString = htmlString.replaceAll(`</${tag}>`, '')
+        if (!stylisticTags.includes(tag)) htmlString = htmlString.replaceAll(`</${tag}>`, '')
     })
-
-    htmlString = htmlString.split(' ').filter(part => part.length).join(' ')
 
     return htmlString
 }
