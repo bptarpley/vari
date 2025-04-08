@@ -60,7 +60,7 @@ function populateData(callback) {
         fetch(tlnURL).then(r => r.json()).then(tlnAgg => {
             if (hasProp(tlnAgg, 'meta.aggregations.tlns')) {
                 let tlns = tlnAgg.meta.aggregations.tlns
-                tlns = Object.keys(tlns).map(tln => parseInt(tln))
+                tlns = Object.keys(tlns).map(tln => parseFloat(tln))
                 tlns.sort((a, b) => a - b).forEach(tln => window.vari.ordered_tlns.add(tln))
 
                 let atomsURL = buildApiURL(window.vari.atomContentType, [
@@ -148,6 +148,10 @@ function makeDiff(a, b) {
                 })
 
                 tagsAndText.opened_tags = []
+            } else if (tagsAndText.opened_tags.length) {
+                tagsAndText.opened_tags.forEach(tag => {
+                    styleNodes.push(document.createElement(tag))
+                })
             }
 
             if (tagsAndText.text.trim().length) {
@@ -162,10 +166,6 @@ function makeDiff(a, b) {
                 } else {
                     node = document.createTextNode(tagsAndText.text)
                 }
-            } else if (tagsAndText.opened_tags.length) {
-                tagsAndText.opened_tags.forEach(tag => {
-                    styleNodes.push(document.createElement(tag))
-                })
             }
         }
 
@@ -174,11 +174,12 @@ function makeDiff(a, b) {
             else fragment.appendChild(node)
         }
 
-        if (tagsAndText.closed_tags.length > tagsAndText.opened_tags.length && styleNodes.length) {
+        while (tagsAndText.closed_tags.length && styleNodes.length) {
             if (styleNodes.length > 1) styleNodes[styleNodes.length - 2].appendChild(styleNodes[styleNodes.length - 1])
             else fragment.appendChild(styleNodes[0])
 
             styleNodes.pop()
+            tagsAndText.closed_tags.pop()
         }
     }
 

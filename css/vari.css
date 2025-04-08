@@ -12,7 +12,7 @@ body {
 
 #edition-list-holder {
     position: relative;
-    min-width: 300px;
+    min-width: 400px;
     display: flex;
     align-items: end;
 }
@@ -26,7 +26,7 @@ body {
     top: 0;
     z-index: 50;
     background-color: #303230;
-    min-width: 300px;
+    min-width: 400px;
     text-align: right;
 }
 
@@ -35,10 +35,35 @@ body {
     padding-bottom: 10px;
 }
 
+#edition-list-table {
+    width: 100%;
+    border-spacing: 0px;
+    border-collapse: separate;
+}
+
 .edition-list-col {
     vertical-align: top;
     text-align: left;
     min-width: 150px;
+}
+
+.edition-list-item, .edition-list-item > label {
+    display: block;
+    width: 100%;
+}
+
+.edition-list-checkall-label {
+    background-color: #FFFFFF;
+    color: #000000;
+}
+
+.edition-list-item {
+    margin-bottom: 4px;
+}
+
+.edition-list-item > label {
+    padding-left: 22px;
+    text-indent: -22px;
 }
 
 .edition-list-item.derivative {
@@ -54,6 +79,11 @@ body {
 .atom-col a {
     text-decoration: none;
     color: #362E1A;
+}
+
+.line-missing-from-copytext {
+    background-color: #eaf2c2;
+    color: #406619;
 }
 
 .ln-holder {

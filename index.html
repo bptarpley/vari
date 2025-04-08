@@ -50,7 +50,7 @@
                 let copytextBox = getEl('copytext-box')
                 let editionList = getEl('edition-list')
                 let variHeader = getEl('vari-header')
-                let editionListRow = `<tr>`
+                let editionListRow = "<tr>"
 
                 Object.keys(window.vari.copytexts).forEach(copytextID => {
                     let copytext = window.vari.editions[copytextID]
@@ -61,24 +61,43 @@
 
                     editionListRow += `
                         <td class="edition-list-col">
-                            <div>
-                                <input type="checkbox" id="edition-listing-${copytextID}" class="edition-list-item" data-edition="${copytextID}" checked>
+                            <label for="edition-listing-${copytextID}" class="edition-list-item">
+                                <input type="checkbox" id="edition-listing-${copytextID}" class="edition-checkbox" data-edition="${copytextID}" checked>
                                 ${copytext.siglum} ${parseDateString(copytext.published, 'Year')}
-                            </div>
+                            </label>
+                        </td>
                     `
+                })
+
+                editionListRow += "</tr><tr>"
+
+                Object.keys(window.vari.copytexts).forEach(copytextID => {
+                    editionListRow += `
+                        <td class="edition-list-col">
+                            <label for="check-all-below-${copytextID}" class="edition-list-item edition-list-checkall-label">
+                                <input id="check-all-below-${copytextID}" type="checkbox" class="edition-list-checkall-box" data-checkall-copytext="${copytextID}">
+                                Select all below
+                            </label>
+                    `
+
                     window.vari.copytexts[copytextID].forEach(editionID => {
                         let ed = window.vari.editions[editionID]
                         editionListRow += `
-                            <div>
-                                <input type="checkbox" id="edition-listing-${editionID}" class="edition-list-item derivative" data-edition="${editionID}" checked>
-                                ${ed.siglum} ${parseDateString(ed.published, 'Year')}
+                            <div class="edition-list-item derivative">
+                                <label for="edition-listing-${editionID}">
+                                    <input type="checkbox" id="edition-listing-${editionID}" class="edition-checkbox" data-edition="${editionID}" data-copytext="${copytextID}" checked>
+                                    ${ed.siglum} ${parseDateString(ed.published, 'Year')}
+                                </label>
                             </div>
                         `
                     })
                     editionListRow += '</td>'
+
                 })
                 editionListRow += '</tr>'
+
                 let editionListTable = makeEl('table')
+                editionListTable.id = "edition-list-table"
                 editionListTable.innerHTML = editionListRow
                 editionList.appendChild(editionListTable)
 
@@ -93,14 +112,18 @@
                     variHeader.appendChild(headerRow)
                 })
 
+                // event for copytext dropdown change
                 copytextBox.onchange = (e) => {
                     let copytextID = getEl('copytext-box').value
                     window.vari.ordered_editions.forEach(editionID => {
                         let editionListing = getEl(`edition-listing-${editionID}`)
 
                         if (editionID === copytextID) {
+                            let checkAllBox = getEl(`check-all-below-${editionID}`)
+
                             editionListing.checked = true
                             editionListing.setAttribute('disabled', true)
+                            checkAllBox.checked = true
                         } else {
                             window.vari.editions[editionID].visible = window.vari.copytexts[copytextID].includes(editionID)
                             editionListing.checked = window.vari.editions[editionID].visible
@@ -111,8 +134,30 @@
                     getEl('hdr-copytext').innerHTML = makeEditionLink(window.vari.editions[copytextID])
                     drawVari()
                 }
-                forElsMatching('.edition-list-item', el => el.onchange = (e) => {
+
+                // event for individual edition checkbox change
+                forElsMatching('.edition-checkbox', el => el.onchange = (e) => {
                     window.vari.editions[e.target.dataset.edition].visible = e.target.checked
+
+                    if (e.target.dataset.copytext) {
+                        let allChecked = true
+                        forElsMatching(`input.edition-checkbox[data-copytext="${e.target.dataset.copytext}"]`, editionCheckbox => {
+                            if (!editionCheckbox.checked) allChecked = false
+                        })
+                        getEl(`check-all-below-${e.target.dataset.copytext}`).checked = allChecked
+                    }
+
+                    drawVari()
+                })
+
+                // event for edition "check all" box change
+                forElsMatching('.edition-list-checkall-box', el => el.onchange = (e) => {
+                    console.log(e.target.dataset)
+                    forElsMatching(`input.edition-checkbox[data-copytext="${e.target.dataset.checkallCopytext}"]`, editionCheckbox => {
+                        editionCheckbox.checked = e.target.checked
+                        window.vari.editions[editionCheckbox.dataset.edition].visible = e.target.checked
+                    })
+
                     drawVari()
                 })
 
@@ -206,14 +251,23 @@
             missingTlns.sort((a, b) => a - b)
 
             missingTlns.forEach(missingTln => {
-                let prevTln = missingTln - 1
+                let tlnsDrawnAndSorted = [...tlnsDrawn]
+                tlnsDrawnAndSorted.sort((a, b) => a - b)
+
+                let prevTln = -1
+                tlnsDrawnAndSorted.forEach(drawnTln => {
+                    if (drawnTln < missingTln) {
+                        prevTln = drawnTln
+                    }
+                })
+
                 let prevTlnRow = getEl(`${prevTln}-row`)
                 if (prevTlnRow) {
                     let diffSlots = Array.from(window.vari.ordered_editions, (_,i) => false)
 
                     let missingRow = makeEl('tr', {
                         id: `${missingTln}-row`,
-                        class: `atom-row missing`,
+                        class: `atom-row`,
                         'data-tln': missingTln
                     })
 
@@ -230,6 +284,7 @@
                             let edAtom = window.vari.atoms[tlnKey]
                             edCol.appendChild(makeLineLink(edAtom))
                             diffSlots[visibleEditions[editionID]] = true
+                            edCol.classList.add('line-missing-from-copytext')
                         }
 
                         missingRow.appendChild(edCol)
@@ -251,6 +306,7 @@
                     histoCol.innerHTML = makeHistogram(diffSlots)
                     missingRow.prepend(histoCol)
                     prevTlnRow.insertAdjacentElement('afterend', missingRow)
+                    tlnsDrawn.add(missingTln)
                 }
             })
         }
