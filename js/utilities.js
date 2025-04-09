@@ -73,8 +73,12 @@ function populateData(callback) {
                     if (hasProp(atoms, 'records')) {
                         atoms.records.forEach(atom => {
                             let atomKey = `${atom.edition.id}-${atom.tln}`
-                            window.vari.atoms[atomKey] = atom
-                            window.vari.editions[atom.edition.id].ordered_tlns.add(atom.tln)
+                            if (atom.content) {
+                                window.vari.atoms[atomKey] = atom
+                                window.vari.editions[atom.edition.id].ordered_tlns.add(atom.tln)
+                            } else {
+                                console.log(`Warning: empty content for line ${atom.id}`)
+                            }
                         })
                     }
                     callback()
@@ -191,6 +195,11 @@ function distillHTML(htmlString) {
         'i': 'em'
     }
 
+    // strip out all tag attributes. we want just simple tags
+    htmlString = htmlString.replace(/<(\/?)([\w-]+)[^>]*>/g, function(match, slash, tagName) {
+        return '<' + slash + tagName + '>'
+    })
+
     Object.keys(tagTransforms).forEach(tag => {
         htmlString = htmlString.replaceAll(`<${tag}>`, `<${tagTransforms[tag]}>`)
         htmlString = htmlString.replaceAll(`</${tag}>`, `</${tagTransforms[tag]}>`)
@@ -253,7 +262,7 @@ function makeLineLink(line, diffElement=null, original_ln=null) {
     })
 
     if (diffElement !== null) lineLink.appendChild(diffElement)
-    else lineLink.innerHTML = line.content
+    else lineLink.innerHTML = distillHTML(line.content)
 
     let lineNum = makeEl('span', {
         class: `ln-holder${ original_ln !== null && original_ln !== line.ln ? ' variant' : '' }`
@@ -262,4 +271,86 @@ function makeLineLink(line, diffElement=null, original_ln=null) {
     lineLink.prepend(lineNum)
 
     return lineLink
+}
+function makeEditionInfo(edID) {
+    let ed = window.vari.editions[edID]
+    let edInfo = makeEl('div', {
+        'class': 'modal-content',
+        'data-edition-id': edID
+    })
+    let hasThumbnail = ed.thumbnail ? true : false
+    let cleanCitation = distillHTML(ed.bibliographic_citation)
+    let cleanEditorNote = `${ed.editor_note ? distillHTML(ed.editor_note) : ''}`
+
+    if (hasThumbnail) edInfo.classList.add('with-thumbnail')
+
+    appendToEl(edInfo, `
+        ${hasThumbnail ? `<div><img src="${window.vari.corporaHost}/iiif/2/${ed.thumbnail}/full/100,/0/default.png" alt="${ed.siglum}" class="modal-thumbnail"></div>` : ''}
+        <div class="modal-text">
+            <div>${cleanCitation}</div>
+            ${cleanEditorNote ? `<p class="editor-note"><b>Editor's Note:</b> ${cleanEditorNote}</p>` : ''}
+        </div>
+    `)
+    return edInfo
+}
+function showEditionInfoModal(target, edID) {
+    let modal = getEl('popup-modal')
+    modal.append(makeEditionInfo(edID))
+    modal.classList.remove('hidden')
+    positionEditionInfoModal(target)
+    modal.style.opacity = '1'
+}
+function hideEditionInfoModal() {
+    let modal = getEl('popup-modal')
+    modal.innerHTML = ''
+    modal.style.opacity = '0'
+    modal.classList.add('hidden')
+}
+function positionEditionInfoModal(el) {
+    // Get positions and dimensions
+    const modal = getEl('popup-modal')
+    const targetRect = el.getBoundingClientRect()
+    const modalRect = modal.getBoundingClientRect()
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft
+
+    // Reset arrow classes
+    modal.classList.remove('arrow-top', 'arrow-left', 'arrow-right')
+
+    // Determine the best position (left, right, or below)
+    const spaceRight = window.innerWidth - targetRect.right
+    const spaceLeft = targetRect.left
+
+    // Default position (below target)
+    let top, left, arrowClass
+
+    if (spaceRight < modalRect.width) {
+        // Position to the left
+        top = targetRect.top + scrollTop + (targetRect.height / 2) - (modalRect.height / 2)
+        left = targetRect.left + scrollLeft - modalRect.width - 16
+        arrowClass = 'arrow-right'
+    } else if (spaceLeft < modalRect.width) {
+        // Position to the right
+        top = targetRect.top + scrollTop + (targetRect.height / 2) - (modalRect.height / 2)
+        left = targetRect.right + scrollLeft + 16
+        arrowClass = 'arrow-left'
+    }
+    else {
+        // Position below
+        top = targetRect.bottom + scrollTop + 16
+        left = targetRect.left + scrollLeft + (targetRect.width / 2) - (modalRect.width / 2)
+        arrowClass = 'arrow-top'
+    }
+
+    // Keep modal within viewport bounds
+    if (left < 10) left = 10
+    if (top < 10) {
+        top = 10
+        arrowClass = ''
+    }
+
+    // Apply position
+    modal.style.top = Math.round(top) + 'px'
+    modal.style.left = Math.round(left) + 'px'
+    if (arrowClass) modal.classList.add(arrowClass)
 }

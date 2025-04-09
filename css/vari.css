@@ -81,9 +81,23 @@ body {
     color: #362E1A;
 }
 
+.variant-new-stanza {
+    border-top: dashed 4px #406619;
+    padding-top: 4px;
+}
+
+.variant-missing-stanza {
+    border-top: dashed 4px #b30000;
+    padding-top: 4px;
+}
+
 .line-missing-from-copytext {
     background-color: #eaf2c2;
     color: #406619;
+}
+
+.line-missing-from-edition {
+    background-color: #AF582F
 }
 
 .ln-holder {
@@ -173,14 +187,87 @@ ins {
     padding-top: 20px;
 }
 
-.atom-row.missing {
-    background-color: #AF582F;
-}
-
 .atom-col {
     text-wrap-mode: nowrap;
 }
 
 .atom-col {
     vertical-align: bottom;
+}
+
+/* STYLING FOR EDITION POPUP MODAL */
+#popup-modal {
+    display: block;
+    position: absolute;
+    z-index: 100;
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 5px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    width: 300px;
+}
+
+#popup-modal:has(.modal-thumbnail) {
+    width: 400px;
+    min-height: 160px;
+}
+
+.modal-content {
+    color: #303230;
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+}
+
+.modal-thumbnail {
+    border-radius: 4px;
+}
+
+.modal-text {
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Arrow pointing to the trigger element */
+#popup-modal::before {
+    content: '';
+    position: absolute;
+    border-width: 8px;
+    border-style: solid;
+    border-color: transparent;
+}
+
+/* Arrow positions */
+#popup-modal.arrow-top::before {
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-bottom-color: white;
+}
+
+#popup-modal.arrow-bottom::before {
+    bottom: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-top-color: white;
+}
+
+#popup-modal.arrow-left::before {
+    left: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-right-color: white;
+}
+
+#popup-modal.arrow-right::before {
+    right: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-left-color: white;
 }

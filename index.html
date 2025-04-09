@@ -30,6 +30,8 @@
         </table>
     </div>
 
+    <div id="popup-modal" class="hidden"></div>
+
     <script src="js/utilities.js"></script>
     <script src="js/diff.js"></script>
     <script type="application/javascript">
@@ -61,7 +63,7 @@
 
                     editionListRow += `
                         <td class="edition-list-col">
-                            <label for="edition-listing-${copytextID}" class="edition-list-item">
+                            <label for="edition-listing-${copytextID}" class="edition-list-item" data-edition="${copytextID}">
                                 <input type="checkbox" id="edition-listing-${copytextID}" class="edition-checkbox" data-edition="${copytextID}" checked>
                                 ${copytext.siglum} ${parseDateString(copytext.published, 'Year')}
                             </label>
@@ -83,7 +85,7 @@
                     window.vari.copytexts[copytextID].forEach(editionID => {
                         let ed = window.vari.editions[editionID]
                         editionListRow += `
-                            <div class="edition-list-item derivative">
+                            <div class="edition-list-item derivative" data-edition="${editionID}">
                                 <label for="edition-listing-${editionID}">
                                     <input type="checkbox" id="edition-listing-${editionID}" class="edition-checkbox" data-edition="${editionID}" data-copytext="${copytextID}" checked>
                                     ${ed.siglum} ${parseDateString(ed.published, 'Year')}
@@ -115,6 +117,9 @@
                 // event for copytext dropdown change
                 copytextBox.onchange = (e) => {
                     let copytextID = getEl('copytext-box').value
+
+                    forElsMatching('.edition-list-checkall-box', el => el.checked = false)
+
                     window.vari.ordered_editions.forEach(editionID => {
                         let editionListing = getEl(`edition-listing-${editionID}`)
 
@@ -131,7 +136,9 @@
                         }
                     })
 
-                    getEl('hdr-copytext').innerHTML = makeEditionLink(window.vari.editions[copytextID])
+                    let copytextHeader = getEl('hdr-copytext')
+                    copytextHeader.innerHTML = makeEditionLink(window.vari.editions[copytextID])
+                    copytextHeader.setAttribute('data-edition', copytextID)
                     drawVari()
                 }
 
@@ -161,6 +168,13 @@
                     drawVari()
                 })
 
+                // set up edition modals in edition tree
+                forElsMatching('.edition-list-item[data-edition]', el => {
+                    el.onmouseenter = (e) => showEditionInfoModal(e.target, e.target.dataset.edition)
+                    el.onmouseleave = (e) => hideEditionInfoModal()
+                })
+
+                // go ahead and "draw" the variorum by triggering the change event on the copytext dropdown
                 copytextBox.dispatchEvent(new Event('change'))
             })
         })
@@ -204,9 +218,17 @@
                             let [diff, isVariant] = makeDiff(atom.content, edAtom.content)
 
                             edCol.appendChild(makeLineLink(edAtom, diff, atom.ln))
+                            if (edAtom.new_stanza && !atom.new_stanza) {
+                                edCol.classList.add('variant-new-stanza')
+                                isVariant = true
+                            } else if (atom.new_stanza && !edAtom.new_stanza) {
+                                edCol.classList.add('variant-missing-stanza')
+                                isVariant = true
+                            }
+
                             diffSlots[edSlot] = isVariant
                         } else {
-                            edCol.setAttribute('class', 'atom-col missing')
+                            edCol.setAttribute('class', 'atom-col line-missing-from-edition')
                             edCol.innerHTML = '&nbsp;'
                             diffSlots[edSlot] = true
                         }
@@ -308,6 +330,12 @@
                     prevTlnRow.insertAdjacentElement('afterend', missingRow)
                     tlnsDrawn.add(missingTln)
                 }
+            })
+
+            // set up edition modals in table headers
+            forElsMatching('.edition-header[data-edition]', el => {
+                el.onmouseenter = (e) => showEditionInfoModal(e.target, e.target.dataset.edition)
+                el.onmouseleave = (e) => hideEditionInfoModal()
             })
         }
 
