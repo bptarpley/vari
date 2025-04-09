@@ -48,6 +48,10 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search)
+            let copytextFromGetParam = urlParams.get('copytext')
+            if (copytextFromGetParam === null) copytextFromGetParam = ''
+
             populateData(() => {
                 let copytextBox = getEl('copytext-box')
                 let editionList = getEl('edition-list')
@@ -58,7 +62,7 @@
                     let copytext = window.vari.editions[copytextID]
 
                     appendToEl(copytextBox, `
-                        <option value="${copytextID}">${copytext.siglum} ${parseDateString(copytext.published, 'Year')}</option>
+                        <option value="${copytextID}" ${copytextFromGetParam === copytextID ? 'selected' : ''}>${copytext.siglum} ${parseDateString(copytext.published, 'Year')}</option>
                     `)
 
                     editionListRow += `
