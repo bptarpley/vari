@@ -76,6 +76,15 @@ body {
     color: #362E1A;
 }
 
+.italicize {
+    font-style: italic;
+}
+
+.centered-line {
+    text-align: center;
+    display: block;
+}
+
 .atom-col a {
     text-decoration: none;
     color: #362E1A;

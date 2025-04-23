@@ -253,7 +253,7 @@ function makeHistogram(slots) {
 }
 function makeEditionLink(ed) {
     let pubDate = parseDateString(ed.published, 'Year')
-    return `<a href="${window.vari.corporaHost}${ed.uri}" target="_blank">${ed.siglum} ${pubDate}</a>`
+    return `<a href="${window.vari.corporaHost}${ed.uri}" target="_blank"><span class="italicize">${ed.siglum}</span> ${pubDate}</a>`
 }
 function makeLineLink(line, diffElement=null, original_ln=null) {
     let lineLink = makeEl('a', {
@@ -264,11 +264,15 @@ function makeLineLink(line, diffElement=null, original_ln=null) {
     if (diffElement !== null) lineLink.appendChild(diffElement)
     else lineLink.innerHTML = distillHTML(line.content)
 
-    let lineNum = makeEl('span', {
-        class: `ln-holder${ original_ln !== null && original_ln !== line.ln ? ' variant' : '' }`
-    })
-    lineNum.innerHTML = line.ln
-    lineLink.prepend(lineNum)
+    if (line.tln >= 1) {
+        let lineNum = makeEl('span', {
+            class: `ln-holder${ original_ln !== null && original_ln !== line.ln ? ' variant' : '' }`
+        })
+        lineNum.innerHTML = line.ln
+        lineLink.prepend(lineNum)
+    } else {
+        lineLink.classList.add('centered-line')
+    }
 
     return lineLink
 }
