@@ -120,7 +120,7 @@
                                 lineData.records.forEach(line => {
                                     appendToEl(reproductionDiv, `
                                         <div class="line${line.new_stanza ? ' new-stanza' : ''}${line.tln < 1 ? ' title-or-dedication' : ''}">
-                                            ${distillHTML(line.content)}
+                                            ${line.content ? distillHTML(line.content) : ''}
                                         </div>
                                     `)
                                 })
@@ -136,26 +136,6 @@
 
         populateFooter()
     })
-
-    window.addEventListener("resize", (event) => {
-        clearTimeout(resizeTimer)
-        resizeTimer = setTimeout(() => resizeImages(), 1000)
-    })
-
-    function resizeImages() {
-        forElsMatching('.book-cover', (bookCover) => {
-            let iiifIdentifier = bookCover.dataset.iiifIdentifier
-            let maxWidth = parseInt(bookCover.dataset.maxWidth)
-            let currentWidth = parseInt(bookCover.dataset.currentWidth)
-            let desiredWidth = parseInt(bookCover.offsetWidth)
-
-            if (desiredWidth > maxWidth) desiredWidth = maxWidth
-            if (desiredWidth > currentWidth) {
-                console.log(`updating to ${desiredWidth}`)
-                bookCover.setAttribute('src', `${iiifIdentifier}/full/${desiredWidth},/0/default.png`)
-            }
-        })
-    }
 
 </script>
 </html>
