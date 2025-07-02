@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Variorum Viewer</title>
+    <link href="/css/vari.css" rel="stylesheet">
+    <style>
+        body {
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        section {
+            max-width: 900px;
+        }
+
+        .has-content {
+            margin-bottom: 20px;
+        }
+
+        #reproduction {
+            background-color: var(--page-color);
+            color: var(--text-color);
+            padding: 20px;
+        }
+
+        .new-stanza {
+            margin-top: 20px;
+        }
+
+        .title-or-dedication {
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <section>
+        <h1 id="citation">
+        </h1>
+
+        <div id="thumbnail">
+        </div>
+
+        <div id="editors-note">
+        </div>
+
+        <div id="reproduction">
+        </div>
+
+        <div id="footer">
+        </div>
+    </section>
+
+    <script src="js/utilities.js"></script>
+    <script src="js/diff.js"></script>
+</body>
+<script type="application/javascript">
+    window.vari = {
+        //corporaHost: 'http://localhost',
+        corporaHost: 'https://corpora.dh.tamu.edu',
+        corpusID: '65ea1677203f31a0867f4e13',
+        workID: '65ea179c8147b0628b3e897f',
+        atomContentType: 'Line',
+        ordered_editions: [],
+        ordered_tlns: new Set(),
+        editions: {},
+        copytexts: {},
+        atoms: {},
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        let editionLoaded = false
+        let citationDiv = getEl('citation')
+        let thumbDiv = getEl('thumbnail')
+        let editorsNoteDiv = getEl('editors-note')
+        let reproductionDiv = getEl('reproduction')
+        let urlParams = new URLSearchParams(window.location.search)
+        let editionID = urlParams.get('id')
+
+        if (editionID) {
+            populateData(() => {
+                if (editionID in window.vari.editions) {
+                    let ed = window.vari.editions[editionID]
+
+                    citationDiv.innerHTML = distillHTML(ed.bibliographic_citation)
+
+                    if (ed.thumbnail) {
+                        let iiifIdentifier = `${window.vari.corporaHost}/iiif/2/${ed.thumbnail}`
+
+                        fetch(`${iiifIdentifier}/info.json`)
+                            .then(resp => resp.json())
+                            .then(iiifInfo => {
+                                thumbDiv.innerHTML = `
+                                    <img
+                                        src="${iiifIdentifier}/full/400,/0/default.png"
+                                        class="book-cover"
+                                        data-iiif-identifier="${iiifIdentifier}"
+                                        data-max-width="${iiifInfo.width}"
+                                        data-current-width="400"
+                                        alt="${ed.siglum}">
+                                `
+                                thumbDiv.classList.add('has-content')
+                            })
+                        // end fetch
+                    }
+
+                    if (ed.editor_note) {
+                        editorsNoteDiv.innerHTML = `<b>Editor’s Note:</b> ${distillHTML(ed.editor_note)}`
+                        editorsNoteDiv.classList.add('has-content')
+                    }
+
+                    fetch(`${window.vari.corporaHost}/api/corpus/${window.vari.corpusID}/Line/?f_edition.id=${editionID}&s_ln=asc`)
+                        .then(resp => resp.json())
+                        .then(lineData => {
+                            if (lineData.records) {
+                                lineData.records.forEach(line => {
+                                    appendToEl(reproductionDiv, `
+                                        <div class="line${line.new_stanza ? ' new-stanza' : ''}${line.tln < 1 ? ' title-or-dedication' : ''}">
+                                            ${distillHTML(line.content)}
+                                        </div>
+                                    `)
+                                })
+                            }
+                        })
+
+                    editionLoaded = true
+                }
+            }, true)
+        }
+
+        if (!editionLoaded) citationDiv.innerHTML = "Edition not found!"
+
+        populateFooter()
+    })
+
+    window.addEventListener("resize", (event) => {
+        clearTimeout(resizeTimer)
+        resizeTimer = setTimeout(() => resizeImages(), 1000)
+    })
+
+    function resizeImages() {
+        forElsMatching('.book-cover', (bookCover) => {
+            let iiifIdentifier = bookCover.dataset.iiifIdentifier
+            let maxWidth = parseInt(bookCover.dataset.maxWidth)
+            let currentWidth = parseInt(bookCover.dataset.currentWidth)
+            let desiredWidth = parseInt(bookCover.offsetWidth)
+
+            if (desiredWidth > maxWidth) desiredWidth = maxWidth
+            if (desiredWidth > currentWidth) {
+                console.log(`updating to ${desiredWidth}`)
+                bookCover.setAttribute('src', `${iiifIdentifier}/full/${desiredWidth},/0/default.png`)
+            }
+        })
+    }
+
+</script>
+</html>

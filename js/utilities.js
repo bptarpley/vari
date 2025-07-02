@@ -29,7 +29,7 @@ function buildApiURL(content_type, params=[]) {
     let paramString = params.length ? `?${params.join('&')}` : ''
     return `${url}${paramString}`
 }
-function populateData(callback) {
+function populateData(callback, editionInfoOnly=false) {
     let api = buildApiURL('Edition', [
         `f_work.id=${window.vari.workID}`,
         's_published=asc',
@@ -53,38 +53,40 @@ function populateData(callback) {
             })
         }
 
-        let tlnURL = buildApiURL(window.vari.atomContentType, [
-            'a_terms_tlns=tln',
-            'page-size=0'
-        ])
-        fetch(tlnURL).then(r => r.json()).then(tlnAgg => {
-            if (hasProp(tlnAgg, 'meta.aggregations.tlns')) {
-                let tlns = tlnAgg.meta.aggregations.tlns
-                tlns = Object.keys(tlns).map(tln => parseFloat(tln))
-                tlns.sort((a, b) => a - b).forEach(tln => window.vari.ordered_tlns.add(tln))
+        if (!editionInfoOnly) {
+            let tlnURL = buildApiURL(window.vari.atomContentType, [
+                'a_terms_tlns=tln',
+                'page-size=0'
+            ])
+            fetch(tlnURL).then(r => r.json()).then(tlnAgg => {
+                if (hasProp(tlnAgg, 'meta.aggregations.tlns')) {
+                    let tlns = tlnAgg.meta.aggregations.tlns
+                    tlns = Object.keys(tlns).map(tln => parseFloat(tln))
+                    tlns.sort((a, b) => a - b).forEach(tln => window.vari.ordered_tlns.add(tln))
 
-                let atomsURL = buildApiURL(window.vari.atomContentType, [
-                    's_edition.published=asc',
-                    's_ln=asc',
-                    'only=uri,edition.id,tln,ln,content,text,new_stanza',
-                    'page-size=5000'
-                ])
-                fetch(atomsURL).then(r => r.json()).then(atoms => {
-                    if (hasProp(atoms, 'records')) {
-                        atoms.records.forEach(atom => {
-                            let atomKey = `${atom.edition.id}-${atom.tln}`
-                            if (atom.content) {
-                                window.vari.atoms[atomKey] = atom
-                                window.vari.editions[atom.edition.id].ordered_tlns.add(atom.tln)
-                            } else {
-                                console.log(`Warning: empty content for line ${atom.id}`)
-                            }
-                        })
-                    }
-                    callback()
-                })
-            }
-        })
+                    let atomsURL = buildApiURL(window.vari.atomContentType, [
+                        's_edition.published=asc',
+                        's_ln=asc',
+                        'only=uri,edition.id,tln,ln,content,text,new_stanza',
+                        'page-size=5000'
+                    ])
+                    fetch(atomsURL).then(r => r.json()).then(atoms => {
+                        if (hasProp(atoms, 'records')) {
+                            atoms.records.forEach(atom => {
+                                let atomKey = `${atom.edition.id}-${atom.tln}`
+                                if (atom.content) {
+                                    window.vari.atoms[atomKey] = atom
+                                    window.vari.editions[atom.edition.id].ordered_tlns.add(atom.tln)
+                                } else {
+                                    console.log(`Warning: empty content for line ${atom.id}`)
+                                }
+                            })
+                        }
+                        callback()
+                    })
+                }
+            })
+        } else callback()
     })
 }
 function determineRootInfluence(editionID, edsTraversed=[]) {
@@ -253,7 +255,7 @@ function makeHistogram(slots) {
 }
 function makeEditionLink(ed) {
     let pubDate = parseDateString(ed.published, 'Year')
-    return `<a href="${window.vari.corporaHost}${ed.uri}" target="_blank"><span class="italicize">${ed.siglum}</span> ${pubDate}</a>`
+    return `<a href="/edition.html?id=${ed.id}" target="_blank"><span class="italicize">${ed.siglum}</span> ${pubDate}</a>`
 }
 function makeLineLink(line, diffElement=null, original_ln=null) {
     let lineLink = makeEl('a', {
@@ -292,7 +294,7 @@ function makeEditionInfo(edID) {
         ${hasThumbnail ? `<div><img src="${window.vari.corporaHost}/iiif/2/${ed.thumbnail}/full/100,/0/default.png" alt="${ed.siglum}" class="modal-thumbnail"></div>` : ''}
         <div class="modal-text">
             <div>${cleanCitation}</div>
-            ${cleanEditorNote ? `<p class="editor-note"><b>Editor's Note:</b> ${cleanEditorNote}</p>` : ''}
+            ${cleanEditorNote ? `<p class="editor-note"><b>Editor’s Note:</b> ${cleanEditorNote}</p>` : ''}
         </div>
     `)
     return edInfo
@@ -357,4 +359,16 @@ function positionEditionInfoModal(el) {
     modal.style.top = Math.round(top) + 'px'
     modal.style.left = Math.round(left) + 'px'
     if (arrowClass) modal.classList.add(arrowClass)
+}
+function populateFooter() {
+    let footer = getEl('footer')
+    footer.innerHTML = `
+        <span>
+            This site was developed by Bryan Tarpley as a result of a series of technical
+            assistance grants awarded by the Center of Digital Humanities Research at
+            Texas A&M University.
+        </span>
+
+        <img class="footer-logo" src="/img/CoDHR_logo.png">
+    `
 }

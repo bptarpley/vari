@@ -4,346 +4,247 @@
     <meta charset="UTF-8">
     <title>Variorum Viewer</title>
     <link href="/css/vari.css" rel="stylesheet">
+    <style>
+        body {
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #header h1 { margin-bottom: 0; }
+        #header h2 { margin-top: 10px; }
+
+        #description {
+            font-size: 18px;
+            max-width: 900px;
+            margin-bottom: 20px;
+        }
+
+        #copytext-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 25px;
+            max-width: 900px;
+            width: 100%;
+            padding: 0 10px;
+        }
+
+        .book-item {
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 12px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            aspect-ratio: 2/3;
+        }
+
+        .book-item:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+        }
+
+        .book-cover {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: filter 0.3s ease;
+        }
+
+        .book-item:hover .book-cover {
+            filter: brightness(1.1);
+        }
+
+        .book-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            color: white;
+            padding: 20px;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .book-item:hover .book-overlay {
+            transform: translateY(0);
+        }
+
+        .book-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            line-height: 1.3;
+        }
+
+        .book-author {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .selected-book {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            text-align: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .selected-book h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .selected-book p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            #copytext-selector {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 15px;
+            }
+
+            #header h1 {
+                font-size: 2rem;
+            }
+
+            body {
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #copytext-selector {
+                grid-template-columns: unset;
+                gap: 20px;
+                display: flex;
+                flex-direction: column;
+            }
+
+            #header h1 {
+                font-size: 1.5rem;
+            }
+
+            .book-overlay {
+                padding: 15px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div id="control-div">
-        <div>
-            Select an edition as your copy text:
-            <select id="copytext-box"></select>
-        </div>
-        <div id="edition-list-holder">
-            <details id="edition-list">
-                <summary>Editions shown</summary>
-            </details>
-        </div>
+    <div id="header">
+        <h1>A Variorum Edition of “Heritage” by Countee Cullen</h1>
+        <h2>Edited by Ira Dworkin</h2>
     </div>
 
-    <div id="vari-table-holder">
-        <table id="vari-table">
-            <thead>
-                <tr id="vari-header">
-                    <th id="hdr-histogram"></th>
-                    <th id="hdr-copytext" class="edition-header"></th>
-                </tr>
-            </thead>
-            <tbody id="vari-body"></tbody>
-        </table>
+    <div id="description">
+        One of the conceits of this variorum is that there is no authoritative copy text
+        from which to trace the editorial lineage of this poem, and so I gesture playfully
+        toward this by placing the two first editions of the poem in random order. Clicking
+        on one will open the variorum viewer, allowing you to explore the editorial history
+        of that particular edition:
     </div>
 
-    <div id="popup-modal" class="hidden"></div>
+    <div id="copytext-selector">
+        <!-- Populated by JavaScript -->
+    </div>
+
+    <div id="footer">
+    </div>
 
     <script src="js/utilities.js"></script>
     <script src="js/diff.js"></script>
-    <script type="application/javascript">
-        window.vari = {
-            corporaHost: 'https://corpora.dh.tamu.edu',
-            corpusID: '65ea1677203f31a0867f4e13',
-            workID: '65ea179c8147b0628b3e897f',
-            atomContentType: 'Line',
-            ordered_editions: [],
-            ordered_tlns: new Set(),
-            editions: {},
-            copytexts: {},
-            atoms: {},
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search)
-            let copytextFromGetParam = urlParams.get('copytext')
-            if (copytextFromGetParam === null) copytextFromGetParam = ''
-
-            populateData(() => {
-                let copytextBox = getEl('copytext-box')
-                let editionList = getEl('edition-list')
-                let variHeader = getEl('vari-header')
-                let editionListRow = "<tr>"
-
-                Object.keys(window.vari.copytexts).forEach(copytextID => {
-                    let copytext = window.vari.editions[copytextID]
-
-                    appendToEl(copytextBox, `
-                        <option value="${copytextID}" ${copytextFromGetParam === copytextID ? 'selected' : ''}>${copytext.siglum} ${parseDateString(copytext.published, 'Year')}</option>
-                    `)
-
-                    editionListRow += `
-                        <td class="edition-list-col">
-                            <label for="edition-listing-${copytextID}" class="edition-list-item" data-edition="${copytextID}">
-                                <input type="checkbox" id="edition-listing-${copytextID}" class="edition-checkbox" data-edition="${copytextID}" checked>
-                                ${copytext.siglum} ${parseDateString(copytext.published, 'Year')}
-                            </label>
-                        </td>
-                    `
-                })
-
-                editionListRow += "</tr><tr>"
-
-                Object.keys(window.vari.copytexts).forEach(copytextID => {
-                    editionListRow += `
-                        <td class="edition-list-col">
-                            <label for="check-all-below-${copytextID}" class="edition-list-item derivative edition-list-checkall-label">
-                                <input id="check-all-below-${copytextID}" type="checkbox" class="edition-list-checkall-box" data-checkall-copytext="${copytextID}">
-                                Select all below
-                            </label>
-                    `
-
-                    window.vari.copytexts[copytextID].forEach(editionID => {
-                        let ed = window.vari.editions[editionID]
-                        editionListRow += `
-                            <div class="edition-list-item derivative" data-edition="${editionID}">
-                                <label for="edition-listing-${editionID}">
-                                    <input type="checkbox" id="edition-listing-${editionID}" class="edition-checkbox" data-edition="${editionID}" data-copytext="${copytextID}" checked>
-                                    ${ed.siglum} ${parseDateString(ed.published, 'Year')}
-                                </label>
-                            </div>
-                        `
-                    })
-                    editionListRow += '</td>'
-
-                })
-                editionListRow += '</tr>'
-
-                let editionListTable = makeEl('table')
-                editionListTable.id = "edition-list-table"
-                editionListTable.innerHTML = editionListRow
-                editionList.appendChild(editionListTable)
-
-                window.vari.ordered_editions.forEach(editionID => {
-                    let ed = window.vari.editions[editionID]
-                    let headerRow = makeEl('th', {
-                        id: `hdr-${editionID}`,
-                        class: 'edition-header',
-                        'data-edition': editionID
-                    })
-                    headerRow.innerHTML = makeEditionLink(ed)
-                    variHeader.appendChild(headerRow)
-                })
-
-                // event for copytext dropdown change
-                copytextBox.onchange = (e) => {
-                    let copytextID = getEl('copytext-box').value
-
-                    forElsMatching('.edition-list-checkall-box', el => el.checked = false)
-
-                    window.vari.ordered_editions.forEach(editionID => {
-                        let editionListing = getEl(`edition-listing-${editionID}`)
-
-                        if (editionID === copytextID) {
-                            let checkAllBox = getEl(`check-all-below-${editionID}`)
-
-                            editionListing.checked = true
-                            editionListing.setAttribute('disabled', true)
-                            checkAllBox.checked = true
-                        } else {
-                            window.vari.editions[editionID].visible = window.vari.copytexts[copytextID].includes(editionID)
-                            editionListing.checked = window.vari.editions[editionID].visible
-                            editionListing.removeAttribute('disabled')
-                        }
-                    })
-
-                    let copytextHeader = getEl('hdr-copytext')
-                    copytextHeader.innerHTML = makeEditionLink(window.vari.editions[copytextID])
-                    copytextHeader.setAttribute('data-edition', copytextID)
-                    drawVari()
-                }
-
-                // event for individual edition checkbox change
-                forElsMatching('.edition-checkbox', el => el.onchange = (e) => {
-                    window.vari.editions[e.target.dataset.edition].visible = e.target.checked
-
-                    if (e.target.dataset.copytext) {
-                        let allChecked = true
-                        forElsMatching(`input.edition-checkbox[data-copytext="${e.target.dataset.copytext}"]`, editionCheckbox => {
-                            if (!editionCheckbox.checked) allChecked = false
-                        })
-                        getEl(`check-all-below-${e.target.dataset.copytext}`).checked = allChecked
-                    }
-
-                    drawVari()
-                })
-
-                // event for edition "check all" box change
-                forElsMatching('.edition-list-checkall-box', el => el.onchange = (e) => {
-                    console.log(e.target.dataset)
-                    forElsMatching(`input.edition-checkbox[data-copytext="${e.target.dataset.checkallCopytext}"]`, editionCheckbox => {
-                        editionCheckbox.checked = e.target.checked
-                        window.vari.editions[editionCheckbox.dataset.edition].visible = e.target.checked
-                    })
-
-                    drawVari()
-                })
-
-                // set up edition modals in edition tree
-                forElsMatching('.edition-list-item[data-edition]', el => {
-                    el.onmouseenter = (e) => showEditionInfoModal(e.target, e.target.dataset.edition)
-                    el.onmouseleave = (e) => hideEditionInfoModal()
-                })
-
-                // go ahead and "draw" the variorum by triggering the change event on the copytext dropdown
-                copytextBox.dispatchEvent(new Event('change'))
-            })
-        })
-
-        function drawVari() {
-            let variBody = getEl('vari-body')
-            let copytextID = getEl('copytext-box').value
-            let copytext = window.vari.editions[copytextID]
-            let tlnsDrawn = new Set()
-            let visibleEditions = {}
-
-            copytext.visible = false
-            clearEl(variBody)
-
-            copytext.ordered_tlns.forEach(tln => {
-                let diffSlots = Array.from(window.vari.ordered_editions, (_,i) => false)
-                let tlnKey = `${copytextID}-${tln}`
-                let atom = window.vari.atoms[tlnKey]
-                let atomRow = makeEl('tr', {
-                    id: `${tln}-row`,
-                    class: `atom-row${atom.new_stanza ? ' new-stanza' : ''}`,
-                    'data-tln': tln
-                })
-
-                window.vari.ordered_editions.forEach((editionID, edSlot) => {
-                    let headerCol = getEl(`hdr-${editionID}`)
-                    let edCol = makeEl('td', {
-                        id: `${tln}-${editionID}-col`,
-                        class: 'atom-col',
-                        'data-tln': tln,
-                        'data-edition': editionID
-                    })
-
-
-                    if (window.vari.editions[editionID].visible && editionID !== copytextID) {
-                        visibleEditions[editionID] = edSlot
-                        headerCol.classList.remove('hidden')
-                        let tlnKey = `${editionID}-${tln}`
-                        if (tlnKey in window.vari.atoms) {
-                            let edAtom = window.vari.atoms[tlnKey]
-                            let [diff, isVariant] = makeDiff(atom.content, edAtom.content)
-
-                            edCol.appendChild(makeLineLink(edAtom, diff, atom.ln))
-                            if (edAtom.new_stanza && !atom.new_stanza) {
-                                edCol.classList.add('variant-new-stanza')
-                                isVariant = true
-                            } else if (atom.new_stanza && !edAtom.new_stanza) {
-                                edCol.classList.add('variant-missing-stanza')
-                                isVariant = true
-                            }
-
-                            diffSlots[edSlot] = isVariant
-                        } else {
-                            edCol.setAttribute('class', 'atom-col line-missing-from-edition')
-                            edCol.innerHTML = '&nbsp;'
-                            diffSlots[edSlot] = true
-                        }
-                    } else {
-                        edCol.classList.add('hidden')
-                        headerCol.classList.add('hidden')
-                    }
-
-                    atomRow.appendChild(edCol)
-                })
-
-                atomCol = makeEl('td', {
-                    id: `${tln}-${copytextID}-col`,
-                    class: `atom-col copytext`,
-                    'data-tln': tln,
-                    'data-edition': copytextID
-                })
-                atomCol.appendChild(makeLineLink(atom))
-                atomRow.prepend(atomCol)
-
-                histoCol = makeEl('td', {
-                    id: `${tln}-histogram-col`,
-                    class: `histogram-col`,
-                    'data-tln': tln
-                })
-                histoCol.innerHTML = makeHistogram(diffSlots)
-                atomRow.prepend(histoCol)
-
-                variBody.appendChild(atomRow)
-                tlnsDrawn.add(tln)
-            })
-
-            // build and place missing lines
-            let missingTlns = []
-            Object.keys(visibleEditions).forEach(editionID => {
-                window.vari.editions[editionID].ordered_tlns.forEach(tln => {
-                    if (!tlnsDrawn.has(tln) && !missingTlns.includes(tln)) {
-                        missingTlns.push(tln)
-                    }
-                })
-            })
-            missingTlns.sort((a, b) => a - b)
-
-            missingTlns.forEach(missingTln => {
-                let tlnsDrawnAndSorted = [...tlnsDrawn]
-                tlnsDrawnAndSorted.sort((a, b) => a - b)
-
-                let prevTln = -1
-                tlnsDrawnAndSorted.forEach(drawnTln => {
-                    if (drawnTln < missingTln) {
-                        prevTln = drawnTln
-                    }
-                })
-
-                let prevTlnRow = getEl(`${prevTln}-row`)
-                if (prevTlnRow) {
-                    let diffSlots = Array.from(window.vari.ordered_editions, (_,i) => false)
-
-                    let missingRow = makeEl('tr', {
-                        id: `${missingTln}-row`,
-                        class: `atom-row`,
-                        'data-tln': missingTln
-                    })
-
-                    Object.keys(visibleEditions).forEach(editionID => {
-                        let edCol = makeEl('td', {
-                            id: `${missingTln}-${editionID}-col`,
-                            class: 'atom-col',
-                            'data-tln': missingTln,
-                            'data-edition': editionID
-                        })
-
-                        let tlnKey = `${editionID}-${missingTln}`
-                        if (tlnKey in window.vari.atoms) {
-                            let edAtom = window.vari.atoms[tlnKey]
-                            edCol.appendChild(makeLineLink(edAtom))
-                            diffSlots[visibleEditions[editionID]] = true
-                            edCol.classList.add('line-missing-from-copytext')
-                        }
-
-                        missingRow.appendChild(edCol)
-                    })
-
-                    atomCol = makeEl('td', {
-                        id: `${missingTln}-${copytextID}-col`,
-                        class: `atom-col copytext`,
-                        'data-tln': missingTln,
-                        'data-edition': copytextID
-                    })
-                    missingRow.prepend(atomCol)
-
-                    histoCol = makeEl('td', {
-                        id: `${missingTln}-histogram-col`,
-                        class: `histogram-col`,
-                        'data-tln': missingTln
-                    })
-                    histoCol.innerHTML = makeHistogram(diffSlots)
-                    missingRow.prepend(histoCol)
-                    prevTlnRow.insertAdjacentElement('afterend', missingRow)
-                    tlnsDrawn.add(missingTln)
-                }
-            })
-
-            // set up edition modals in table headers
-            forElsMatching('.edition-header[data-edition]', el => {
-                el.onmouseenter = (e) => showEditionInfoModal(e.target, e.target.dataset.edition)
-                el.onmouseleave = (e) => hideEditionInfoModal()
-            })
-        }
-
-
-    </script>
 </body>
+<script type="application/javascript">
+    window.vari = {
+        //corporaHost: 'http://localhost',
+        corporaHost: 'https://corpora.dh.tamu.edu',
+        corpusID: '65ea1677203f31a0867f4e13',
+        workID: '65ea179c8147b0628b3e897f',
+        atomContentType: 'Line',
+        ordered_editions: [],
+        ordered_tlns: new Set(),
+        editions: {},
+        copytexts: {},
+        atoms: {},
+    }
+    let resizeTimer = null
+
+    document.addEventListener('DOMContentLoaded', function() {
+        populateData(() => {
+            let copyTextSelector = getEl('copytext-selector')
+            let randomizedCopyTextIDs = Object.keys(window.vari.copytexts).sort(() => Math.random() - 0.5)
+
+            randomizedCopyTextIDs.forEach(copyTextID => {
+                let copyText = window.vari.editions[copyTextID]
+
+                if (copyText.thumbnail) {
+                    let iiifIdentifier = `${window.vari.corporaHost}/iiif/2/${copyText.thumbnail}`
+                    let bookCover = makeEl('div', {
+                        'class': 'book-item',
+                        'data-id': copyTextID,
+                    })
+
+                    fetch(`${iiifIdentifier}/info.json`)
+                        .then(resp => resp.json())
+                        .then(iiifInfo => {
+                            bookCover.innerHTML = `
+                                <a href="viewer.html?copytext=${copyTextID}">
+                                    <img
+                                        src="${iiifIdentifier}/full/400,/0/default.png"
+                                        class="book-cover"
+                                        data-iiif-identifier="${iiifIdentifier}"
+                                        data-max-width="${iiifInfo.width}"
+                                        data-current-width="400"
+                                        alt="${copyText.siglum}">
+                                </a>
+                                <div class="book-overlay">
+                                    <div class="book-title">${copyText.siglum}</div>
+                                    <div class="book-author">${copyText.bibliographic_citation}</div>
+                                </div>
+                            `
+                            copyTextSelector.appendChild(bookCover)
+                        })
+                    // end fetch
+                }
+            })
+
+            setTimeout(() => resizeImages(), 2000)
+        }, true)
+        populateFooter()
+    })
+
+    window.addEventListener("resize", (event) => {
+        clearTimeout(resizeTimer)
+        resizeTimer = setTimeout(() => resizeImages(), 1000)
+    })
+
+    function resizeImages() {
+        forElsMatching('.book-cover', (bookCover) => {
+            let iiifIdentifier = bookCover.dataset.iiifIdentifier
+            let maxWidth = parseInt(bookCover.dataset.maxWidth)
+            let currentWidth = parseInt(bookCover.dataset.currentWidth)
+            let desiredWidth = parseInt(bookCover.offsetWidth)
+
+            if (desiredWidth > maxWidth) desiredWidth = maxWidth
+            if (desiredWidth > currentWidth) {
+                console.log(`updating to ${desiredWidth}`)
+                bookCover.setAttribute('src', `${iiifIdentifier}/full/${desiredWidth},/0/default.png`)
+            }
+        })
+    }
+
+</script>
 </html>
