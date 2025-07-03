@@ -64,6 +64,15 @@ body {
     width: 100%;
 }
 
+.edition-list-item a {
+    color: var(--page-color);
+    text-decoration: none;
+}
+
+.edition-list-item a:hover {
+    text-decoration: underline;
+}
+
 .edition-list-checkall-label {
     background-color: #FFFFFF;
     color: #000000;
@@ -86,6 +95,10 @@ body {
     font-weight: bold;
     text-decoration: none;
     color: var(--text-color);
+}
+
+.edition-header a:hover {
+    text-decoration: underline;
 }
 
 .italicize {
@@ -270,28 +283,28 @@ ins {
     top: -14px;
     left: 50%;
     transform: translateX(-50%);
-    border-bottom-color: white;
+    border-bottom-color: var(--background-color);
 }
 
 #popup-modal.arrow-bottom::before {
     bottom: -14px;
     left: 50%;
     transform: translateX(-50%);
-    border-top-color: white;
+    border-top-color: var(--background-color);
 }
 
 #popup-modal.arrow-left::before {
     left: -14px;
     top: 50%;
     transform: translateY(-50%);
-    border-right-color: white;
+    border-right-color: var(--background-color);
 }
 
 #popup-modal.arrow-right::before {
     right: -14px;
     top: 50%;
     transform: translateY(-50%);
-    border-left-color: white;
+    border-left-color: var(--background-color);
 }
 
 #footer {

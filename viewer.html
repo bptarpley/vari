@@ -95,7 +95,7 @@
                             <div class="edition-list-item derivative" data-edition="${editionID}">
                                 <label for="edition-listing-${editionID}">
                                     <input type="checkbox" id="edition-listing-${editionID}" class="edition-checkbox" data-edition="${editionID}" data-copytext="${copytextID}" checked>
-                                    ${ed.siglum} ${parseDateString(ed.published, 'Year')}
+                                    <a href="/edition.html?id=${editionID}" target="_blank"><i>${ed.siglum}</i> ${parseDateString(ed.published, 'Year')}</a>
                                 </label>
                             </div>
                         `
