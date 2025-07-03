@@ -364,9 +364,11 @@ function populateFooter() {
     let footer = getEl('footer')
     footer.innerHTML = `
         <span>
-            This site was developed by Bryan Tarpley as a result of a series of technical
-            assistance grants awarded by the Center of Digital Humanities Research at
-            Texas A&M University.
+            This site was developed by Bryan Tarpley thanks to a series of technical assistance 
+            grants awarded by the Center of Digital Humanities Research at Texas A&M University. 
+            Additional thanks to my undergraduate research assistant Polly Korleva, the Interlibrary 
+            Loan Office at Texas A&M University Evans Library, and the Moorland-Spingarn Library at 
+            Howard University.
         </span>
 
         <img class="footer-logo" src="/img/CoDHR_logo.png">
